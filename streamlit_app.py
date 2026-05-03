@@ -5,6 +5,7 @@ import requests
 import urllib.parse
 import random
 import time
+import json
 
 # --- Backend Logic (VeloLabs Engine) ---
 
@@ -45,7 +46,7 @@ def literature_qc(hypothesis):
         status = "exact match found" if len(results) > 0 and results[0].get("title", [""])[0].lower() in hypothesis.lower() else "similar work exists"
         return {"status": status, "references": refs}
     except Exception as e:
-        return {"error": str(e)}
+        return {"status": "error", "references": [], "error": str(e)}
 
 def generate_plan(hypothesis):
     time.sleep(1.5) # Simulate AI processing time
@@ -97,48 +98,70 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Premium UI Styling
+# Premium UI Styling — hide Streamlit chrome and make the iframe fill the viewport
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    .block-container {padding: 0;}
-    iframe {border: none; width: 100vw; height: 100vh;}
+    .block-container {padding: 0 !important; max-width: 100% !important;}
+    .stApp > header {display: none;}
+    /* Make the component iframe fill the viewport */
+    iframe {
+        border: none !important; 
+        width: 100vw !important; 
+        height: 100vh !important;
+        min-height: 100vh !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: 9999 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # Path to the React build
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
-BUILD_DIR = os.path.join(PARENT_DIR, "frontend/dist")
+BUILD_DIR = os.path.join(PARENT_DIR, "frontend", "dist")
 
 if not os.path.exists(BUILD_DIR):
-    st.error("Error: Frontend build directory not found. Please run 'npm run build' first.")
-else:
-    # Declare the component
-    velo_labs_component = components.declare_component("velo_labs", path=BUILD_DIR)
+    st.error("⚠️ Frontend build directory not found. Please run `cd frontend && npm run build` first.")
+    st.stop()
 
-    # Initialize session state for API responses
-    if "api_response" not in st.session_state:
-        st.session_state.api_response = None
+# Declare the component
+velo_labs_component = components.declare_component("velo_labs", path=BUILD_DIR)
 
-    # Render the component and capture events
-    # We pass st.session_state.api_response as 'args' to the component
-    result = velo_labs_component(key="velo_main", args=st.session_state.api_response)
+# Initialize session state for API responses
+if "api_response" not in st.session_state:
+    st.session_state.api_response = None
 
-    # Handle component events (actions)
-    if result:
-        action = result.get("action")
-        hypothesis = result.get("hypothesis")
+# Build the args dict — always send a dict, never None
+component_args = {}
+if st.session_state.api_response is not None:
+    component_args = st.session_state.api_response
+    # Clear after sending so we don't re-send stale data
+    st.session_state.api_response = None
+
+# Render the component and capture events
+result = velo_labs_component(
+    key="velo_main",
+    args=component_args,
+    default=None
+)
+
+# Handle component events (actions from the React UI)
+if result is not None and isinstance(result, dict):
+    action = result.get("action")
+    hypothesis = result.get("hypothesis", "")
+    
+    if action == "qc" and hypothesis.strip():
+        with st.spinner("Analyzing Literature..."):
+            data = literature_qc(hypothesis)
+            st.session_state.api_response = {"type": "qc_result", "data": data}
+        st.rerun()
         
-        if action == "qc":
-            with st.spinner("Analyzing Literature..."):
-                data = literature_qc(hypothesis)
-                st.session_state.api_response = {"type": "qc_result", "data": data}
-            st.rerun()
-            
-        elif action == "generate_plan":
-            with st.spinner("Engineering Protocol..."):
-                data = generate_plan(hypothesis)
-                st.session_state.api_response = {"type": "plan_result", "data": data}
-            st.rerun()
+    elif action == "generate_plan" and hypothesis.strip():
+        with st.spinner("Engineering Protocol..."):
+            data = generate_plan(hypothesis)
+            st.session_state.api_response = {"type": "plan_result", "data": data}
+        st.rerun()

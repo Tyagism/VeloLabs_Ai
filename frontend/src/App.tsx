@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BookOpen, Clock, Settings, FileText, CheckCircle2, AlertTriangle, XCircle, Sparkles, Beaker, DollarSign, Calendar, Edit3, Save, Check, Trash2, Download, BarChart3, TrendingUp, PieChart as PieIcon, Activity } from 'lucide-react';
 import { 
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import './index.css';
 import logo from './assets/logo.png';
-import { Streamlit } from "streamlit-component-lib";
+import { Streamlit, useStreamlit } from "./streamlit";
 
 interface QCReference {
   title: string;
@@ -71,9 +71,10 @@ const mockSampleSizeData = [
   { range: '1000+', count: 5 },
 ];
 
-function App(props: any) {
-  // Check if we are running inside Streamlit
-  const isStreamlit = props.theme !== undefined;
+function App() {
+  const renderData = useStreamlit();
+  const isStreamlit = window.parent !== window.self;
+  const frameHeightRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [hypothesis, setHypothesis] = useState('');
   const [loadingQC, setLoadingQC] = useState(false);
@@ -127,21 +128,35 @@ function App(props: any) {
     localStorage.setItem('savedPapers', JSON.stringify(savedPapers));
   }, [savedPapers]);
 
-  useEffect(() => {
-    if (isStreamlit) {
-      Streamlit.setComponentReady();
-      Streamlit.setFrameHeight();
-    }
+  // Notify Streamlit the component is ready and set the frame height on every render
+  const updateFrameHeight = useCallback(() => {
+    if (!isStreamlit) return;
+    // Debounce height updates to avoid excessive calls
+    if (frameHeightRef.current) clearTimeout(frameHeightRef.current);
+    frameHeightRef.current = setTimeout(() => {
+      const body = document.body;
+      const html = document.documentElement;
+      const height = Math.max(
+        body.scrollHeight, body.offsetHeight,
+        html.clientHeight, html.scrollHeight, html.offsetHeight
+      );
+      Streamlit.setFrameHeight(height);
+    }, 50);
   }, [isStreamlit]);
 
-  // Handle incoming data from Streamlit
+  // Update frame height whenever key state changes
   useEffect(() => {
-    if (props.args) {
-      const { type, data, error } = props.args;
-      if (type === 'qc_result') {
+    updateFrameHeight();
+  }, [currentView, qcResult, plan, activeTab, isSidebarOpen, loadingQC, loadingPlan, updateFrameHeight]);
+
+  // Handle incoming data from Streamlit via renderData
+  useEffect(() => {
+    if (renderData?.args && typeof renderData.args === 'object' && renderData.args.type) {
+      const { type, data, error } = renderData.args;
+      if (type === 'qc_result' && data) {
         setQcResult(data);
         setLoadingQC(false);
-      } else if (type === 'plan_result') {
+      } else if (type === 'plan_result' && data) {
         setPlan(data);
         setLoadingPlan(false);
         setActiveTab('protocol');
@@ -152,7 +167,7 @@ function App(props: any) {
         setLoadingPlan(false);
       }
     }
-  }, [props.args]);
+  }, [renderData]);
 
   const savePaper = (ref: QCReference) => {
     if (!savedPapers.some(p => p.url === ref.url)) {
