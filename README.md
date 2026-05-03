@@ -4,6 +4,9 @@
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?logo=react)](https://reactjs.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 
+
+[![Streamlit App](https://static.streamlit.io/badge-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://veloabs-ai.streamlit.app)
+
 Streamlit Active Link =>  https://velolabsai-hvrpiesckbbc2lcwqq2xmu.streamlit.app
 
 ## 🧪 Short Description
