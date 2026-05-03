@@ -4,6 +4,8 @@
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?logo=react)](https://reactjs.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 
+Streamlit Active Link =>  https://velolabsai-hvrpiesckbbc2lcwqq2xmu.streamlit.app
+
 ## 🧪 Short Description
 **VeloLabs** is a high-fidelity AI orchestration engine that transforms scientific hypotheses into operationally realistic, peer-referenced experiment protocols. It automates literature verification, supply chain sourcing, and research analytics in one premium, neumorphic interface.
 
