@@ -1287,6 +1287,7 @@ select.md-input option {
   margin-bottom: 12px;
   background: linear-gradient(135deg, var(--md-sys-color-primary), var(--md-sys-color-secondary));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
 }
